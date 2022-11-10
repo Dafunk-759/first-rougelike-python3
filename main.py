@@ -1,7 +1,9 @@
 import tcod
 
-from actions import EscapeAction, MovementAction
 from input_handlers import EventHandler
+from entity import Entity
+from game_map import GameMap
+from engine import Engine
 
 class Main:
     def __init__(self) -> None:
@@ -14,45 +16,47 @@ class Main:
             charmap=tcod.tileset.CHARMAP_TCOD
         )
         self.root_console = None
-        self.event_handler = EventHandler()
-
-        self.player_x = int(self.screen_width / 2)
-        self.player_y = int(self.screen_height / 2)
+        self.engine = self.create_engine()
 
     
-    def print_player(self):
-        if type(self.root_console) == tcod.Console:
-            self.root_console.print(
-                self.player_x,
-                self.player_y,
-                string="@"
-            )
-    
+    def create_engine(self) -> Engine:
+        player = Entity(
+            int(self.screen_width / 2),
+            int(self.screen_height / 2),
+            "@",
+            (255, 255, 255)
+        )
 
-    def dispatch_event(self, event):
-        action = self.event_handler.dispatch(event)
+        npc = Entity(
+            int(self.screen_width / 2) - 5,
+            int(self.screen_height / 2),
+            "@",
+            (255, 255, 0)
+        )
 
-        match action:
-            case MovementAction(dx=dx, dy=dy):
-                # print(f"dx:{dx}, dy:{dy}")
-                self.player_x += dx
-                self.player_y += dy
-            
-            case EscapeAction():
-                raise SystemExit()
-            
-            case None:
-                return
-    
+        entities = {
+            player,
+            npc
+        }
+
+        map_width = 80
+        map_height = 50
+
+        game_map = GameMap(map_width, map_height)
+
+        return Engine(
+            entities=entities, 
+            event_handler=EventHandler(), 
+            player=player,
+            game_map=game_map
+        )
+
 
     def main_loop(self, context: tcod.context.Context):
-        self.root_console.clear()
+        self.engine.render(self.root_console, context)
 
-        self.print_player()
-        context.present(self.root_console)
-
-        for event in tcod.event.wait():
-            self.dispatch_event(event)
+        events = tcod.event.wait()
+        self.engine.handle_event(events)
 
 
     def main(self):
